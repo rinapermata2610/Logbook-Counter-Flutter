@@ -17,23 +17,29 @@ class _CounterViewState extends State<CounterView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(title: const Text("LogBook Counter")),
+      appBar: AppBar(
+        title: const Text("LogBook Counter"),
+        centerTitle: true,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            // Counter Card
             Card(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
+              elevation: 4,
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
                     const Text("Counter Value"),
+                    const SizedBox(height: 8),
                     Text(
                       "${_controller.value}",
                       style: const TextStyle(
-                          fontSize: 42, fontWeight: FontWeight.bold),
+                          fontSize: 44, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -42,12 +48,15 @@ class _CounterViewState extends State<CounterView> {
 
             const SizedBox(height: 20),
 
+            // Input Step
             TextField(
               controller: _stepController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: "Step",
-                prefixIcon: Icon(Icons.tune),
+                prefixIcon: const Icon(Icons.tune),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onChanged: (value) {
                 final step = int.tryParse(value) ?? 1;
@@ -57,21 +66,26 @@ class _CounterViewState extends State<CounterView> {
 
             const SizedBox(height: 15),
 
+            // Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                ElevatedButton.icon(
+                  onPressed: () =>
+                      setState(() => _controller.decrement()),
+                  icon: const Icon(Icons.remove),
+                  label: const Text("Kurang"),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () =>
+                      setState(() => _controller.increment()),
+                  icon: const Icon(Icons.add),
+                  label: const Text("Tambah"),
+                ),
                 ElevatedButton(
-                    onPressed: () =>
-                        setState(() => _controller.decrement()),
-                    child: const Icon(Icons.remove)),
-                ElevatedButton(
-                    onPressed: () =>
-                        setState(() => _controller.increment()),
-                    child: const Icon(Icons.add)),
-                ElevatedButton(
-                    onPressed: () =>
-                        setState(() => _controller.reset()),
-                    child: const Text("Reset")),
+                  onPressed: () => _showResetDialog(),
+                  child: const Text("Reset"),
+                ),
               ],
             ),
 
@@ -83,14 +97,21 @@ class _CounterViewState extends State<CounterView> {
 
             const SizedBox(height: 10),
 
+            // History List
             Expanded(
               child: ListView.builder(
                 itemCount: _controller.history.length,
                 itemBuilder: (context, index) {
+                  final item = _controller.history[index];
+
+                  Color color = Colors.grey;
+                  if (item.contains("menambah")) color = Colors.green;
+                  if (item.contains("mengurangi")) color = Colors.red;
+
                   return Card(
                     child: ListTile(
-                      leading: const Icon(Icons.history),
-                      title: Text(_controller.history[index]),
+                      leading: Icon(Icons.history, color: color),
+                      title: Text(item, style: TextStyle(color: color)),
                     ),
                   );
                 },
@@ -98,6 +119,34 @@ class _CounterViewState extends State<CounterView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Dialog konfirmasi reset + SnackBar
+  void _showResetDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Konfirmasi Reset"),
+        content: const Text("Yakin ingin reset counter?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() => _controller.reset());
+              Navigator.pop(context);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Counter berhasil di-reset")),
+              );
+            },
+            child: const Text("Reset"),
+          ),
+        ],
       ),
     );
   }
