@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'counter_controller.dart';
 
 class CounterView extends StatefulWidget {
-  const CounterView({super.key});
+  final String username;
+
+  const CounterView({super.key, required this.username});
 
   @override
   State<CounterView> createState() => _CounterViewState();
@@ -14,32 +16,45 @@ class _CounterViewState extends State<CounterView> {
       TextEditingController(text: "1");
 
   @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() async {
+    await _controller.loadData();
+    setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text("LogBook Counter"),
+        title: Text("LogBook - ${widget.username}"),
         centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Counter Card
             Card(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
               elevation: 4,
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
-                    const Text("Counter Value"),
+                    const Text("Angka Terakhir"),
                     const SizedBox(height: 8),
                     Text(
                       "${_controller.value}",
                       style: const TextStyle(
-                          fontSize: 44, fontWeight: FontWeight.bold),
+                        fontSize: 44,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -48,15 +63,15 @@ class _CounterViewState extends State<CounterView> {
 
             const SizedBox(height: 20),
 
-            // Input Step
             TextField(
               controller: _stepController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: "Step",
                 prefixIcon: const Icon(Icons.tune),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onChanged: (value) {
                 final step = int.tryParse(value) ?? 1;
@@ -66,24 +81,23 @@ class _CounterViewState extends State<CounterView> {
 
             const SizedBox(height: 15),
 
-            // Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () =>
-                      setState(() => _controller.decrement()),
+                  onPressed: () => setState(() =>
+                      _controller.decrement(widget.username)),
                   icon: const Icon(Icons.remove),
                   label: const Text("Kurang"),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () =>
-                      setState(() => _controller.increment()),
+                  onPressed: () => setState(() =>
+                      _controller.increment(widget.username)),
                   icon: const Icon(Icons.add),
                   label: const Text("Tambah"),
                 ),
                 ElevatedButton(
-                  onPressed: () => _showResetDialog(),
+                  onPressed: _showResetDialog,
                   child: const Text("Reset"),
                 ),
               ],
@@ -92,12 +106,12 @@ class _CounterViewState extends State<CounterView> {
             const SizedBox(height: 20),
 
             const Align(
-                alignment: Alignment.centerLeft,
-                child: Text("Riwayat Aktivitas")),
+              alignment: Alignment.centerLeft,
+              child: Text("Riwayat Aktivitas"),
+            ),
 
             const SizedBox(height: 10),
 
-            // History List
             Expanded(
               child: ListView.builder(
                 itemCount: _controller.history.length,
@@ -123,7 +137,6 @@ class _CounterViewState extends State<CounterView> {
     );
   }
 
-  // Dialog konfirmasi reset + SnackBar
   void _showResetDialog() {
     showDialog(
       context: context,
@@ -137,7 +150,7 @@ class _CounterViewState extends State<CounterView> {
           ),
           ElevatedButton(
             onPressed: () {
-              setState(() => _controller.reset());
+              setState(() => _controller.reset(widget.username));
               Navigator.pop(context);
 
               ScaffoldMessenger.of(context).showSnackBar(

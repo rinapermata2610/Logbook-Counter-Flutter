@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'counter_view.dart';
+import 'features/auth/login_view.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,9 +10,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: CounterView(),
+      title: 'Login Task 2',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        useMaterial3: true,
+      ),
+      home: const LoginView(),
     );
   }
 }
