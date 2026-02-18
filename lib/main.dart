@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'features/auth/login_view.dart';
+import 'features/onboarding/onboarding_view.dart'; // Pastikan path benar
 
 void main() {
   runApp(const MyApp());
@@ -12,12 +12,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Login Task 2',
+      title: 'LogBook Rina',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        // Tema Pink Soft Natural
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFF06292),
+          primary: const Color(0xFFF06292),
+        ),
         useMaterial3: true,
       ),
-      home: const LoginView(),
+      home: const OnboardingView(), // Mulai dari Onboarding
     );
   }
 }
