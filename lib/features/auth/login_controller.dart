@@ -1,4 +1,7 @@
+import 'dart:async';
+
 class LoginController {
+  // Database statis untuk praktikum
   final Map<String, String> _users = {
     "rina": "123",
     "admin": "admin",
@@ -7,35 +10,36 @@ class LoginController {
   int _attempt = 0;
   bool _isLocked = false;
 
+  // Getter untuk mengecek status tombol (apakah terkunci/tidak)
   bool get isLocked => _isLocked;
 
+  // Fungsi validasi input agar tidak kosong
   String? validate(String username, String password) {
     if (username.isEmpty || password.isEmpty) {
-      return "Username dan Password tidak boleh kosong";
+      return "Username dan password wajib diisi!";
     }
     return null;
   }
 
+  // Fungsi utama login
   bool login(String username, String password) {
-    if (_users.containsKey(username) &&
-        _users[username] == password) {
-      _attempt = 0;
+    if (_users.containsKey(username) && _users[username] == password) {
+      _attempt = 0; 
       return true;
     }
 
+    // Jika gagal, hitung percobaan
     _attempt++;
-
     if (_attempt >= 3) {
-      _lock();
+      _lockAccount();
     }
-
     return false;
   }
 
-  void _lock() {
+  // Mengunci akses selama 10 detik
+  void _lockAccount() {
     _isLocked = true;
-
-    Future.delayed(const Duration(seconds: 10), () {
+    Timer(const Duration(seconds: 10), () {
       _attempt = 0;
       _isLocked = false;
     });

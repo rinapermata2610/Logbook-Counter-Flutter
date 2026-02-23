@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'features/onboarding/onboarding_view.dart'; // Pastikan path benar
+import 'features/onboarding/onboarding_view.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -11,17 +12,26 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Logbook Rina',
       debugShowCheckedModeBanner: false,
-      title: 'LogBook Rina',
+      
+      // Pengaturan tema global aplikasi (Material 3)
       theme: ThemeData(
-        // Tema Pink Soft Natural
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFF06292),
-          primary: const Color(0xFFF06292),
-        ),
         useMaterial3: true,
+        colorSchemeSeed: Colors.pink,
+        scaffoldBackgroundColor: Colors.white,
+        
+        // Konsistensi style untuk AppBar di seluruh aplikasi
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.black,
+        ),
       ),
-      home: const OnboardingView(), // Mulai dari Onboarding
+      
+      // Halaman pertama yang muncul adalah Onboarding
+      home: const OnboardingView(),
     );
   }
 }
