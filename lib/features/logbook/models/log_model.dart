@@ -1,46 +1,51 @@
 class LogModel {
-  String title;
-  String description;
-  String timestamp;
+  final String id;
+  final String title;
+  final String description;
+  final String timestamp;
+  final String category;
 
   LogModel({
+    required this.id,
     required this.title,
     required this.description,
     required this.timestamp,
+    this.category = 'Umum',
   });
 
-  // --- Task 4: JSON Serialization ---
-
-  /// Mengonversi Map (JSON) kembali menjadi Object LogModel.
   factory LogModel.fromMap(Map<String, dynamic> map) {
     return LogModel(
+      id: map['id'] ?? '',
       title: map['title'] ?? '',
       description: map['description'] ?? '',
       timestamp: map['timestamp'] ?? '',
+      category: map['category'] ?? 'Umum',
     );
   }
 
-  /// Mengonversi Object LogModel menjadi Map (JSON).
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'title': title,
       'description': description,
       'timestamp': timestamp,
+      'category': category,
     };
   }
 
-  // --- Helper Method ---
-
-  /// Fungsi copyWith memudahkan kita jika ingin mengupdate satu field saja 
   LogModel copyWith({
+    String? id,
     String? title,
     String? description,
     String? timestamp,
+    String? category,
   }) {
     return LogModel(
+      id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
       timestamp: timestamp ?? this.timestamp,
+      category: category ?? this.category,
     );
   }
 }

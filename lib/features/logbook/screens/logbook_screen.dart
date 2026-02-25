@@ -3,7 +3,7 @@ import '../controllers/log_controller.dart';
 import '../models/log_model.dart';
 import '../widgets/log_card.dart';
 import '../widgets/log_dialog.dart';
-import '../../auth/login_view.dart'; 
+import '../../auth/login_view.dart';
 
 class LogbookScreen extends StatefulWidget {
   final String username;
@@ -23,36 +23,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
     _controller.loadData();
   }
 
-  // Fungsi Konfirmasi Logout
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Keluar"),
-        content: const Text("Apakah Anda yakin ingin logout?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Tutup dialog
-              // Pindah ke Login dan hapus semua history page sebelumnya
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginView()),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Ya, Keluar", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _handleShowDialog({LogModel? log, int? index}) async {
+  Future<void> _handleShowDialog({LogModel? log}) async {
     final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (context) => LogDialog(log: log),
@@ -60,9 +31,9 @@ class _LogbookScreenState extends State<LogbookScreen> {
 
     if (result != null) {
       if (log == null) {
-        _controller.addLog(result['title']!, result['desc']!);
+        _controller.addLog(result['title']!, result['desc']!, result['category']!);
       } else {
-        _controller.editLog(index!, result['title']!, result['desc']!);
+        _controller.editLog(log.id, result['title']!, result['desc']!, result['category']!);
       }
     }
   }
@@ -73,39 +44,80 @@ class _LogbookScreenState extends State<LogbookScreen> {
       appBar: AppBar(
         title: Text("Logbook: ${widget.username}"),
         backgroundColor: Colors.pink.shade100,
-        centerTitle: true,
-        // Tombol Logout di pojok kanan atas
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.red),
-            onPressed: _showLogoutDialog,
+            icon: const Icon(Icons.logout),
+            onPressed: () => Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginView()),
+              (route) => false,
+            ),
+          )
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              onChanged: _controller.searchLog,
+              decoration: const InputDecoration(
+                hintText: "Cari catatan...",
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ValueListenableBuilder<List<LogModel>>(
+              valueListenable: _controller.filteredLogs,
+              builder: (context, currentLogs, _) {
+                if (currentLogs.isEmpty) return _buildEmptyState();
+
+                return ListView.builder(
+                  itemCount: currentLogs.length,
+                  itemBuilder: (context, index) {
+                    final item = currentLogs[index];
+                    return Dismissible(
+                      key: Key(item.id),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      onDismissed: (_) => _controller.deleteLog(item.id),
+                      child: LogCard(
+                        log: item,
+                        color: _controller.getCategoryColor(item.category),
+                        onEdit: () => _handleShowDialog(log: item),
+                        onDelete: () => _controller.deleteLog(item.id),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
-      body: ValueListenableBuilder<List<LogModel>>(
-        valueListenable: _controller.logs,
-        builder: (context, currentLogs, _) {
-          if (currentLogs.isEmpty) {
-            return const Center(child: Text("Belum ada catatan aktivitas."));
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: currentLogs.length,
-            itemBuilder: (context, index) {
-              final logItem = currentLogs[index];
-              return LogCard(
-                log: logItem,
-                onEdit: () => _handleShowDialog(log: logItem, index: index),
-                onDelete: () => _controller.deleteLog(index),
-              );
-            },
-          );
-        },
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _handleShowDialog(),
-        backgroundColor: Colors.pink,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.notes, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text("Data Kosong", style: TextStyle(color: Colors.grey)),
+        ],
       ),
     );
   }
