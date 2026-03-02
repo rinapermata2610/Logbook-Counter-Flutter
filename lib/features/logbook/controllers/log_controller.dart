@@ -1,80 +1,83 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mongo_dart/mongo_dart.dart' show ObjectId; // Import ObjectId
+import '../../../services/mongo_service.dart';
 import '../models/log_model.dart';
 
 class LogController {
   final String username;
   LogController({required this.username});
 
-  final ValueNotifier<List<LogModel>> logs = ValueNotifier<List<LogModel>>([]);
+  final MongoService _mongoService = MongoService();
   final ValueNotifier<List<LogModel>> filteredLogs = ValueNotifier<List<LogModel>>([]);
+  List<LogModel> _allLogs = [];
 
-  Future<void> loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? jsonString = prefs.getString('logbook_data_$username');
-    if (jsonString != null && jsonString.isNotEmpty) {
-      final List<dynamic> decodedList = jsonDecode(jsonString);
-      logs.value = decodedList.map((item) => LogModel.fromMap(item)).toList();
-      filteredLogs.value = logs.value;
+  Future<List<LogModel>> fetchLogs() async {
+    try {
+      await _mongoService.connect();
+      final data = await _mongoService.getLogs(username);
+      _allLogs = data;
+      filteredLogs.value = _allLogs;
+      return _allLogs;
+    } catch (e) {
+      debugPrint("Error fetch: $e");
+      return [];
     }
   }
 
   void searchLog(String query) {
     if (query.isEmpty) {
-      filteredLogs.value = logs.value;
+      filteredLogs.value = _allLogs;
     } else {
-      filteredLogs.value = logs.value
-          .where((log) => log.title.toLowerCase().contains(query.toLowerCase()))
+      filteredLogs.value = _allLogs
+          .where((log) => 
+              log.title.toLowerCase().contains(query.toLowerCase()) ||
+              log.description.toLowerCase().contains(query.toLowerCase()))
           .toList();
     }
   }
 
-  void addLog(String title, String desc, String category) {
-    final newLog = LogModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title,
-      description: desc,
-      category: category,
-      timestamp: DateTime.now().toString().substring(0, 16),
-    );
-    logs.value = [...logs.value, newLog];
-    searchLog(""); 
-    _saveToLocal();
-  }
-
-  void editLog(String id, String title, String desc, String category) {
-    final index = logs.value.indexWhere((log) => log.id == id);
-    if (index != -1) {
-      logs.value[index] = logs.value[index].copyWith(
+  Future<void> addLog(String title, String desc, String category) async {
+    try {
+      final newLog = LogModel(
+        id: ObjectId(), // Membuat ID unik otomatis
         title: title,
         description: desc,
         category: category,
+        username: username, 
+        timestamp: DateTime.now().toString().substring(0, 16),
       );
-      logs.value = List.from(logs.value);
-      searchLog("");
-      _saveToLocal();
+
+      await _mongoService.insertLog(newLog);
+      await fetchLogs(); 
+    } catch (e) {
+      debugPrint("Error adding log: $e");
     }
   }
 
-  void deleteLog(String id) {
-    logs.value = logs.value.where((log) => log.id != id).toList();
-    searchLog("");
-    _saveToLocal();
+  Future<void> editLog(dynamic id, String title, String desc, String category) async {
+    try {
+      await _mongoService.updateLog(id, title, desc, category);
+      await fetchLogs();
+    } catch (e) {
+      debugPrint("Error editing log: $e");
+    }
+  }
+
+  Future<void> deleteLog(dynamic id) async {
+    try {
+      await _mongoService.deleteLog(id);
+      await fetchLogs();
+    } catch (e) {
+      debugPrint("Error deleting log: $e");
+    }
   }
 
   Color getCategoryColor(String category) {
     switch (category) {
-      case 'Pekerjaan': return Colors.blue.shade50;
-      case 'Pribadi': return Colors.green.shade50;
-      case 'Urgent': return Colors.red.shade50;
-      default: return Colors.white;
+      case 'Pekerjaan': return Colors.blue.shade100;
+      case 'Pribadi': return Colors.green.shade100;
+      case 'Urgent': return Colors.red.shade100;
+      default: return Colors.grey.shade100;
     }
-  }
-
-  Future<void> _saveToLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String jsonString = jsonEncode(logs.value.map((log) => log.toMap()).toList());
-    await prefs.setString('logbook_data_$username', jsonString);
   }
 }

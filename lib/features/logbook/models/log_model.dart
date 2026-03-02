@@ -1,51 +1,39 @@
+import 'package:mongo_dart/mongo_dart.dart';
+
 class LogModel {
-  final String id;
+  final ObjectId id; 
   final String title;
   final String description;
-  final String timestamp;
   final String category;
+  final String timestamp;
+  final String username; 
 
   LogModel({
     required this.id,
     required this.title,
     required this.description,
+    required this.category,
     required this.timestamp,
-    this.category = 'Umum',
+    required this.username,
   });
 
-  factory LogModel.fromMap(Map<String, dynamic> map) {
-    return LogModel(
-      id: map['id'] ?? '',
-      title: map['title'] ?? '',
-      description: map['description'] ?? '',
-      timestamp: map['timestamp'] ?? '',
-      category: map['category'] ?? 'Umum',
-    );
-  }
+  // Konversi dari Object ke JSON untuk dikirim ke Cloud
+  Map<String, dynamic> toJson() => {
+        '_id': id,
+        'title': title,
+        'description': description,
+        'category': category,
+        'timestamp': timestamp,
+        'username': username,
+      };
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'description': description,
-      'timestamp': timestamp,
-      'category': category,
-    };
-  }
-
-  LogModel copyWith({
-    String? id,
-    String? title,
-    String? description,
-    String? timestamp,
-    String? category,
-  }) {
-    return LogModel(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      description: description ?? this.description,
-      timestamp: timestamp ?? this.timestamp,
-      category: category ?? this.category,
-    );
-  }
+  // Konversi dari JSON (Atlas) ke Object Flutter
+  factory LogModel.fromJson(Map<String, dynamic> json) => LogModel(
+        id: json['_id'] as ObjectId,
+        title: json['title'] ?? '',
+        description: json['description'] ?? '',
+        category: json['category'] ?? 'Pribadi',
+        timestamp: json['timestamp'] ?? '',
+        username: json['username'] ?? '',
+      );
 }

@@ -1,8 +1,27 @@
 import 'package:flutter/material.dart';
-import 'features/onboarding/onboarding_view.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+// Sesuaikan kembali ke path asli kamu:
+import 'features/onboarding/onboarding_view.dart'; 
+import 'services/mongo_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Memuat konfigurasi .env
+  try {
+    await dotenv.load(fileName: ".env");
+    debugPrint("SUCCESS: File .env berhasil dimuat");
+  } catch (e) {
+    debugPrint("ERROR: File .env tidak ditemukan: $e");
+  }
+
+  // Inisialisasi koneksi awal (Audit Log Koneksi Task 4)
+  try {
+    await MongoService().connect();
+  } catch (e) {
+    debugPrint("WARNING: Gagal koneksi awal: $e");
+  }
+
   runApp(const MyApp());
 }
 
@@ -14,14 +33,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Logbook Rina',
       debugShowCheckedModeBanner: false,
-      
-      // Pengaturan tema global aplikasi (Material 3)
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: Colors.pink,
         scaffoldBackgroundColor: Colors.white,
-        
-        // Konsistensi style untuk AppBar di seluruh aplikasi
         appBarTheme: const AppBarTheme(
           elevation: 0,
           centerTitle: true,
@@ -29,8 +44,7 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.black,
         ),
       ),
-      
-      // Halaman pertama yang muncul adalah Onboarding
+      // Gunakan path yang benar
       home: const OnboardingView(),
     );
   }
