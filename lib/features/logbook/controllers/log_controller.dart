@@ -12,17 +12,20 @@ class LogController {
   List<LogModel> _allLogs = [];
 
   Future<List<LogModel>> fetchLogs() async {
-    try {
-      await _mongoService.connect();
-      final data = await _mongoService.getLogs(username);
-      _allLogs = data;
-      filteredLogs.value = _allLogs;
-      return _allLogs;
-    } catch (e) {
-      debugPrint("Error fetch: $e");
-      return [];
-    }
+  try {
+    // REVISI: Tambahkan delay buatan 1.5 detik agar spinner terlihat jelas saat demo
+    await Future.delayed(const Duration(milliseconds: 1500)); 
+
+    await _mongoService.connect();
+    final data = await _mongoService.getLogs(username);
+    _allLogs = data;
+    filteredLogs.value = _allLogs;
+    return _allLogs;
+  } catch (e) {
+    debugPrint("Error fetch: $e");
+    return [];
   }
+}
 
   void searchLog(String query) {
     if (query.isEmpty) {

@@ -15,22 +15,22 @@ class LogbookScreen extends StatefulWidget {
 
 class _LogbookScreenState extends State<LogbookScreen> {
   late LogController _controller;
-  // TASK 3: Inisialisasi Future untuk FutureBuilder
   late Future<List<LogModel>> _logFuture;
 
   @override
   void initState() {
     super.initState();
     _controller = LogController(username: widget.username);
-    // Memuat data pertama kali
     _logFuture = _controller.fetchLogs();
   }
 
-  // TASK 3: Fungsi Auto-Refresh untuk memicu fetch ulang ke Cloud
-  void _refreshData() {
+  // TASK 3 & HOMEWORK: Fungsi Refresh yang bisa dipanggil manual & otomatis
+  Future<void> _refreshData() async {
     setState(() {
       _logFuture = _controller.fetchLogs();
     });
+    // Menunggu future selesai agar animasi RefreshIndicator sinkron
+    await _logFuture;
   }
 
   Future<void> _handleShowDialog({LogModel? log}) async {
@@ -54,7 +54,6 @@ class _LogbookScreenState extends State<LogbookScreen> {
           result['category']!
         );
       }
-      // TASK 3: Trigger refresh otomatis setelah menambah/mengedit data
       _refreshData();
     }
   }
@@ -92,61 +91,61 @@ class _LogbookScreenState extends State<LogbookScreen> {
             ),
           ),
           Expanded(
-            // TASK 3: Menggunakan FutureBuilder untuk menangani Latensi Jaringan
             child: FutureBuilder<List<LogModel>>(
               future: _logFuture,
               builder: (context, snapshot) {
-                // 1. Loading State saat menunggu respon server Atlas
+                // 1. Loading State
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
                     child: CircularProgressIndicator(color: Colors.pink),
                   );
                 }
 
-                // 2. Error State
+                // 2. HOMEWORK: Connection Guard (Error/Offline State)
                 if (snapshot.hasError) {
-                  return Center(child: Text("Error: ${snapshot.error}"));
+                  return _buildErrorState(snapshot.error.toString());
                 }
 
-                // 3. Reactive UI menggunakan ValueListenableBuilder untuk fitur Search
                 return ValueListenableBuilder<List<LogModel>>(
                   valueListenable: _controller.filteredLogs,
                   builder: (context, currentLogs, _) {
-                    // 4. Empty State jika koleksi MongoDB tidak memiliki dokumen
-                    if (currentLogs.isEmpty) return _buildEmptyState();
-
+                    // 3. HOMEWORK: Pull-to-Refresh pembungkus list
                     return RefreshIndicator(
-                      onRefresh: () async => _refreshData(),
-                      child: ListView.builder(
-                        itemCount: currentLogs.length,
-                        itemBuilder: (context, index) {
-                          final item = currentLogs[index];
-                          
-                          return Dismissible(
-                            key: Key(item.id.toString()),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              color: Colors.red,
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              child: const Icon(Icons.delete, color: Colors.white),
-                            ),
-                            onDismissed: (_) async {
-                              await _controller.deleteLog(item.id);
-                              _refreshData(); // Auto-refresh setelah hapus
+                      onRefresh: _refreshData,
+                      color: Colors.pink,
+                      child: currentLogs.isEmpty 
+                        ? _buildEmptyState() 
+                        : ListView.builder(
+                            padding: const EdgeInsets.only(bottom: 80),
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            itemCount: currentLogs.length,
+                            itemBuilder: (context, index) {
+                              final item = currentLogs[index];
+                              return Dismissible(
+                                key: Key(item.id.toString()),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  color: Colors.red,
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  child: const Icon(Icons.delete, color: Colors.white),
+                                ),
+                                onDismissed: (_) async {
+                                  await _controller.deleteLog(item.id);
+                                  _refreshData();
+                                },
+                                child: LogCard(
+                                  log: item,
+                                  color: _controller.getCategoryColor(item.category),
+                                  onEdit: () => _handleShowDialog(log: item),
+                                  onDelete: () async {
+                                    await _controller.deleteLog(item.id);
+                                    _refreshData();
+                                  },
+                                ),
+                              );
                             },
-                            child: LogCard(
-                              log: item,
-                              color: _controller.getCategoryColor(item.category),
-                              onEdit: () => _handleShowDialog(log: item),
-                              onDelete: () async {
-                                await _controller.deleteLog(item.id);
-                                _refreshData(); // Auto-refresh setelah hapus via tombol
-                              },
-                            ),
-                          );
-                        },
-                      ),
+                          ),
                     );
                   },
                 );
@@ -163,24 +162,62 @@ class _LogbookScreenState extends State<LogbookScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return SingleChildScrollView( // Agar RefreshIndicator tetap bisa ditarik
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        alignment: Alignment.center,
-        child: const Column(
+  // HOMEWORK: Widget untuk menampilkan pesan error/offline yang ramah
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.notes, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
+            const Icon(Icons.cloud_off, size: 80, color: Colors.pink),
+            const SizedBox(height: 16),
+            const Text(
+              "Koneksi Bermasalah",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
             Text(
-              "Data Kosong", 
-              style: TextStyle(color: Colors.grey, fontSize: 16)
+              "Gagal terhubung ke MongoDB Atlas. Pastikan internetmu aktif.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _refreshData,
+              icon: const Icon(Icons.refresh),
+              label: const Text("Coba Lagi"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.pink,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return ListView( // Gunakan ListView agar tetap bisa di-pull refresh
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+        const Column(
+          children: [
+            Icon(Icons.notes, size: 80, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              "Belum ada catatan nih.", 
+              style: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold)
+            ),
+            Text(
+              "Klik tombol + untuk menambah baru", 
+              style: TextStyle(color: Colors.grey, fontSize: 14)
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
