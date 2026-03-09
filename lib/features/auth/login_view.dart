@@ -10,10 +10,7 @@ class LoginView extends StatefulWidget {
 }
 
 class _LoginViewState extends State<LoginView> {
-  // Inisialisasi controller
   final LoginController _authController = LoginController();
-  
-  // Controller untuk menangkap teks input
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
 
@@ -30,13 +27,19 @@ class _LoginViewState extends State<LoginView> {
       return;
     }
 
-    // 2. Eksekusi Login
+    // 2. Eksekusi Login & Role Retrieval
     if (_authController.login(username, password)) {
-      // Jika Berhasil: Pindah ke Logbook Screen
+      // AMBIL ROLE: Mengambil data role user dari controller
+      final role = _authController.getRole(username) ?? "Anggota";
+
+      // 3. Pindah ke Logbook Screen dengan membawa data Username & Role
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => LogbookScreen(username: username),
+          builder: (context) => LogbookScreen(
+            username: username,
+            role: role, // Kirim ke LogbookScreen untuk validasi RBAC
+          ),
         ),
       );
     } else {
@@ -70,7 +73,6 @@ class _LoginViewState extends State<LoginView> {
               ),
               const SizedBox(height: 40),
               
-              // TextField Username
               TextField(
                 controller: _userController,
                 decoration: InputDecoration(
@@ -81,7 +83,6 @@ class _LoginViewState extends State<LoginView> {
               ),
               const SizedBox(height: 20),
               
-              // TextField Password
               TextField(
                 controller: _passController,
                 obscureText: !_isPasswordVisible,
@@ -97,7 +98,6 @@ class _LoginViewState extends State<LoginView> {
               ),
               const SizedBox(height: 40),
               
-              // Tombol Login
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -113,6 +113,12 @@ class _LoginViewState extends State<LoginView> {
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "Gunakan 'admin/admin' (Ketua) atau 'rina/123' (Anggota)",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],
           ),

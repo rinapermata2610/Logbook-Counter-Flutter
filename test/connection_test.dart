@@ -1,12 +1,10 @@
-import 'dart:io'; // Tambahkan ini
+import 'dart:io';
+import 'package:flutter/foundation.dart'; // Tambahkan ini untuk debugPrint
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logbook_app_001/services/mongo_service.dart';
 
 void main() {
-  // PERBAIKAN: Gunakan binding yang mengizinkan akses network asli
-  // Jangan gunakan TestWidgetsFlutterBinding.ensureInitialized()
-  
   group('MongoDB Atlas Connection Test', () {
     
     setUpAll(() async {
@@ -20,7 +18,7 @@ void main() {
     test('Harus berhasil terhubung ke MongoDB Atlas', () async {
       final mongoService = MongoService();
 
-      print("\n[TEST] Memulai percobaan koneksi...");
+      debugPrint("\n[TEST] Memulai percobaan koneksi...");
       
       try {
         await mongoService.connect();
@@ -28,9 +26,9 @@ void main() {
         // Verifikasi koneksi
         expect(mongoService.collection, isNotNull);
         
-        print("[TEST] SUCCESS: Koneksi ke Atlas Berhasil!");
+        debugPrint("[TEST] SUCCESS: Koneksi ke Atlas Berhasil!");
       } catch (e) {
-        print("[TEST] ERROR DETAIL: $e");
+        debugPrint("[TEST] ERROR DETAIL: $e");
         fail("[TEST] FAILED: Tidak bisa terhubung ke Atlas.");
       } finally {
         await mongoService.close();

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart'; // Wajib untuk debugPrint
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -14,21 +15,26 @@ class LogHelper {
     final formattedDate = "${timestamp.day.toString().padLeft(2, '0')}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.year}";
     final logEntry = "[${timestamp.toIso8601String()}] [$source] $message\n";
 
-    // 2. Verbosity Control: Hanya muncul di terminal jika LOG_LEVEL == 3
+    // 2. Verbosity Control: Mengganti print ke debugPrint sesuai standar linter
     if (logLevel == 3) {
-      print("AUDIT_LOG: $logEntry");
+      debugPrint("AUDIT_LOG: $logEntry");
     }
 
     // 3. File Logging: Simpan otomatis ke folder /logs (dd-mm-yyyy.log)
     try {
       final directory = await getApplicationDocumentsDirectory();
       final logDir = Directory('${directory.path}/logs');
-      if (!await logDir.exists()) await logDir.create();
+      
+      // Memastikan folder log tersedia
+      if (!await logDir.exists()) {
+        await logDir.create(recursive: true);
+      }
 
       final file = File('${logDir.path}/$formattedDate.log');
       await file.writeAsString(logEntry, mode: FileMode.append);
     } catch (e) {
-      print("Gagal menulis file log: $e");
+      // Menggunakan debugPrint untuk menangkap error penulisan file
+      debugPrint("Gagal menulis file log ke lokal: $e");
     }
   }
 }

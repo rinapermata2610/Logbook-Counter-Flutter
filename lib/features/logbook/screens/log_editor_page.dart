@@ -15,7 +15,7 @@ class _LogEditorPageState extends State<LogEditorPage> {
   late TextEditingController _title;
   late TextEditingController _desc;
   late String _cat;
-  // TASK 5: State untuk status privasi
+  // TASK 5: State untuk visibilitas catatan
   late bool _isPublic;
 
   @override
@@ -24,7 +24,7 @@ class _LogEditorPageState extends State<LogEditorPage> {
     _title = TextEditingController(text: widget.log?.title ?? "");
     _desc = TextEditingController(text: widget.log?.description ?? "");
     _cat = widget.log?.category ?? "Umum";
-    // Default false (Privat) sesuai skenario Task 5
+    // Skenario: Default adalah false (Private)
     _isPublic = widget.log?.isPublic ?? false;
   }
 
@@ -69,27 +69,30 @@ class _LogEditorPageState extends State<LogEditorPage> {
           decoration: const InputDecoration(labelText: "Judul", border: OutlineInputBorder()),
         ),
         const SizedBox(height: 16),
-        // TASK 5: Widget Switch untuk Privasi
+        
+        // TASK 5: Input untuk status Publikasi
         SwitchListTile(
-          title: const Text("Publikasikan Catatan"),
+          title: const Text("Jadikan Publik"),
           subtitle: Text(_isPublic 
-            ? "Anggota tim lain dapat melihat ini" 
-            : "Hanya Anda yang dapat melihat ini"),
+            ? "Anggota tim lain dapat melihat catatan ini" 
+            : "Hanya Anda yang dapat melihat catatan ini"),
           value: _isPublic,
-          activeColor: Colors.pink,
           onChanged: (bool value) {
             setState(() {
               _isPublic = value;
             });
           },
-          secondary: Icon(_isPublic ? Icons.public : Icons.lock, color: Colors.pink),
+          secondary: Icon(_isPublic ? Icons.public : Icons.lock),
+          activeColor: Colors.pink,
         ),
+        
         const SizedBox(height: 16),
         TextField(
           controller: _desc,
-          maxLines: 10,
+          maxLines: 12,
           decoration: const InputDecoration(
             labelText: "Deskripsi (Markdown)", 
+            hintText: "Gunakan # Header, **Bold**, dsb",
             border: OutlineInputBorder()
           ),
           onChanged: (v) => setState(() {}),
@@ -125,14 +128,12 @@ class _LogEditorPageState extends State<LogEditorPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Text(
-                  _title.text.isEmpty ? "Tanpa Judul" : _title.text,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
+              Text(
+                _title.text.isEmpty ? "Tanpa Judul" : _title.text,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
-              // Indikator status di Preview
-              Icon(_isPublic ? Icons.public : Icons.lock, color: Colors.grey, size: 20),
+              // Indikator status privasi di preview
+              Icon(_isPublic ? Icons.public : Icons.lock, size: 20, color: Colors.grey),
             ],
           ),
           const Divider(),
@@ -148,12 +149,11 @@ class _LogEditorPageState extends State<LogEditorPage> {
   }
 
   void _handleSave() {
-    // TASK 5: Sertakan nilai isPublic dalam data yang dikembalikan
     Navigator.pop(context, {
       'title': _title.text,
       'desc': _desc.text,
       'category': _cat,
-      'isPublic': _isPublic.toString(), // Konversi ke string agar seragam dengan data lain
+      'isPublic': _isPublic, // Mengirimkan status publikasi kembali
     });
   }
 }
