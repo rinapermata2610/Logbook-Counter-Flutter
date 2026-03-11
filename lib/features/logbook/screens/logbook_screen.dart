@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../controllers/log_controller.dart';
 import '../models/log_model.dart';
 import '../widgets/log_card.dart';
@@ -6,7 +7,6 @@ import 'log_editor_page.dart';
 import '../../../services/access_policy.dart'; 
 import '../../../services/connectivity_service.dart'; 
 import '../../auth/login_view.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 
 class LogbookScreen extends StatefulWidget {
   final String username;
@@ -23,6 +23,7 @@ class LogbookScreen extends StatefulWidget {
 }
 
 class _LogbookScreenState extends State<LogbookScreen> {
+  // Pastikan class LogController sudah terdefinisi di log_controller.dart
   late LogController _controller;
 
   @override
@@ -40,9 +41,8 @@ class _LogbookScreenState extends State<LogbookScreen> {
     await _controller.fetchLogs();
   }
 
-  /// [TASK 5 UPDATE]: Menangani data isPublic dari Editor
   Future<void> _navigateToEditor({LogModel? log}) async {
-    // Navigator sekarang menangkap Map<String, dynamic> karena isPublic bertipe bool
+    // Navigator menangkap Map dari LogEditorPage
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
@@ -51,17 +51,14 @@ class _LogbookScreenState extends State<LogbookScreen> {
     );
 
     if (result != null) {
-      // Mengambil nilai dari hasil editor
-      final String title = result['title']!;
-      final String desc = result['desc']!;
-      final String category = result['category']!;
-      final bool isPublic = result['isPublic'] ?? false; // Ambil nilai privasi
+      final String title = result['title'] ?? "";
+      final String desc = result['desc'] ?? "";
+      final String category = result['category'] ?? "General";
+      final bool isPublic = result['isPublic'] ?? false;
 
       if (log == null) {
-        // Tambah log baru dengan parameter isPublic
         await _controller.addLog(title, desc, category, isPublic);
       } else {
-        // Edit log lama dengan parameter isPublic
         await _controller.editLog(log.id, title, desc, category, isPublic);
       }
     }
@@ -73,35 +70,22 @@ class _LogbookScreenState extends State<LogbookScreen> {
       appBar: AppBar(
         title: Text("Logbook: ${widget.username}"),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(20),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 4),
+          preferredSize: const Size.fromHeight(25),
+          child: Container(
+            padding: const EdgeInsets.only(bottom: 8),
             child: Text(
-              "Mode: ${widget.role}", 
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.pink)
+              "Access Level: ${widget.role.toUpperCase()}", 
+              style: const TextStyle(fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.bold, color: Colors.pink)
             ),
           ),
         ),
         backgroundColor: Colors.pink.shade50,
         elevation: 0,
         actions: [
-          StreamBuilder(
-            stream: ConnectivityService().connectionStream,
-            builder: (context, snapshot) {
-              final isOffline = snapshot.data?.contains(ConnectivityResult.none) ?? false;
-              return Icon(
-                isOffline ? Icons.cloud_off : Icons.cloud_queue,
-                color: isOffline ? Colors.orange : Colors.green,
-              );
-            },
-          ),
+          _buildConnectionIndicator(),
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginView()),
-              (route) => false,
-            ),
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: _handleLogout,
           ),
           const SizedBox(width: 8),
         ],
@@ -125,27 +109,50 @@ class _LogbookScreenState extends State<LogbookScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _navigateToEditor(),
         backgroundColor: Colors.pink,
-        child: const Icon(Icons.add, color: Colors.white),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text("New Log", style: TextStyle(color: Colors.white)),
       ),
+    );
+  }
+
+  Widget _buildConnectionIndicator() {
+    return StreamBuilder<List<ConnectivityResult>>(
+      stream: ConnectivityService().connectionStream,
+      builder: (context, snapshot) {
+        final isOffline = snapshot.data?.contains(ConnectivityResult.none) ?? false;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Icon(
+            isOffline ? Icons.wifi_off_rounded : Icons.cloud_done_rounded,
+            color: isOffline ? Colors.orange : Colors.green,
+            size: 20,
+          ),
+        );
+      },
     );
   }
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: TextField(
         onChanged: _controller.searchLog,
         decoration: InputDecoration(
-          hintText: "Cari catatan...",
-          prefixIcon: const Icon(Icons.search),
+          hintText: "Search titles or content...",
+          prefixIcon: const Icon(Icons.search_rounded, color: Colors.pink),
           filled: true,
-          fillColor: Colors.pink.shade50.withValues(alpha: 0.3),
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
             borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide(color: Colors.pink.shade50),
           ),
         ),
       ),
@@ -154,34 +161,32 @@ class _LogbookScreenState extends State<LogbookScreen> {
 
   Widget _buildLogList(List<LogModel> logs) {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: logs.length,
       itemBuilder: (context, index) {
         final item = logs[index];
 
-        // [TASK 5 SOVEREIGNTY]: Cek izin hanya berdasarkan kepemilikan (isOwner)
-        final bool canManage = AccessPolicy.canManageLog(
+        // Validasi kedaulatan data (Sovereignty)
+        final bool isOwner = AccessPolicy.canManageLog(
           userRole: widget.role,
           currentUsername: widget.username,
           logOwner: item.username,
         );
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: 12),
           child: Dismissible(
             key: Key(item.id),
-            direction: canManage ? DismissDirection.endToStart : DismissDirection.none,
-            confirmDismiss: (direction) async {
-              return await _showDeleteConfirm();
-            },
+            direction: isOwner ? DismissDirection.endToStart : DismissDirection.none,
+            confirmDismiss: (dir) => _showDeleteConfirm(),
             background: _buildDeleteBackground(),
             onDismissed: (_) => _controller.deleteLog(item.id),
             child: LogCard(
               log: item,
               color: _controller.getCategoryColor(item.category),
-              onEdit: canManage ? () => _navigateToEditor(log: item) : null,
-              onDelete: canManage ? () => _controller.deleteLog(item.id) : null,
+              onEdit: isOwner ? () => _navigateToEditor(log: item) : null,
+              onDelete: isOwner ? () => _controller.deleteLog(item.id) : null,
             ),
           ),
         );
@@ -192,28 +197,16 @@ class _LogbookScreenState extends State<LogbookScreen> {
   Widget _buildDeleteBackground() {
     return Container(
       alignment: Alignment.centerRight,
-      padding: const EdgeInsets.only(right: 20),
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.only(right: 25),
       decoration: BoxDecoration(
-        color: Colors.red.shade400,
-        borderRadius: BorderRadius.circular(15),
+        color: Colors.redAccent,
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: const Icon(Icons.delete_sweep, color: Colors.white, size: 30),
-    );
-  }
-
-  Future<bool?> _showDeleteConfirm() {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Hapus Catatan?"),
-        content: const Text("Tindakan ini akan menghapus data dari lokal dan cloud."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text("Hapus", style: TextStyle(color: Colors.red))
-          ),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.delete_forever_rounded, color: Colors.white, size: 28),
+          Text("Delete", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))
         ],
       ),
     );
@@ -223,28 +216,65 @@ class _LogbookScreenState extends State<LogbookScreen> {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-        Column(
-          children: [
-            Icon(Icons.notes_rounded, size: 100, color: Colors.pink.shade100),
-            const SizedBox(height: 16),
-            const Text(
-              "Logbook masih kosong", 
-              style: TextStyle(color: Colors.black54, fontSize: 18, fontWeight: FontWeight.bold)
-            ),
-            const Text(
-              "Tulis aktivitas pertamamu sekarang!", 
-              style: TextStyle(color: Colors.grey, fontSize: 14)
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: _refreshData,
-              icon: const Icon(Icons.refresh),
-              label: const Text("Coba Refresh"),
-            )
-          ],
+        SizedBox(height: MediaQuery.of(context).size.height * 0.15),
+        Opacity(
+          opacity: 0.6,
+          child: Column(
+            children: [
+              // PERBAIKAN: Typo Topic_outlined -> topic_outlined
+              const Icon(Icons.topic_outlined, size: 120, color: Colors.pink),
+              const SizedBox(height: 24),
+              const Text(
+                "No Logs Found", 
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Text(
+                  "Try adjusting your search or create your first activity log to get started!",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+              const SizedBox(height: 32),
+              OutlinedButton.icon(
+                onPressed: _refreshData,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text("Refresh List"),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.pink),
+              )
+            ],
+          ),
         ),
       ],
+    );
+  }
+
+  void _handleLogout() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginView()),
+      (route) => false,
+    );
+  }
+
+  Future<bool?> _showDeleteConfirm() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Confirm Deletion"),
+        content: const Text("This will permanently remove the log from both local storage and the cloud."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true), 
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Delete", style: TextStyle(color: Colors.white))
+          ),
+        ],
+      ),
     );
   }
 }

@@ -17,7 +17,7 @@ class LogModel {
   @HiveField(5)
   final String timestamp;
   
-  // Task 4: Field untuk sinkronisasi
+  // Task 4: Field untuk sinkronisasi lokal
   @HiveField(6)
   final bool isSynced;
 
@@ -36,13 +36,13 @@ class LogModel {
     this.isPublic = false, // Secara default bersifat privat
   });
 
-  // Method copyWith untuk memudahkan update data
+  // Method copyWith: Digunakan oleh LogController untuk update data tanpa merusak objek asli
   LogModel copyWith({
     String? title,
     String? description,
     String? category,
     bool? isSynced,
-    bool? isPublic, // Tambahkan di copyWith
+    bool? isPublic,
   }) {
     return LogModel(
       id: this.id,
@@ -52,34 +52,36 @@ class LogModel {
       username: this.username,
       timestamp: this.timestamp,
       isSynced: isSynced ?? this.isSynced,
-      isPublic: isPublic ?? this.isPublic, // Update isPublic
+      isPublic: isPublic ?? this.isPublic,
     );
   }
 
-  // Konversi dari JSON (MongoDB)
+  // Konversi dari JSON (MongoDB/API)
   factory LogModel.fromJson(Map<String, dynamic> json) {
     return LogModel(
-      id: json['_id'] is String ? json['_id'] : json['_id'].toHexString(),
-      title: json['title'],
-      description: json['description'],
-      category: json['category'],
-      username: json['username'],
-      timestamp: json['timestamp'],
-      isSynced: true, // Data dari Cloud sudah pasti tersinkron
-      isPublic: json['isPublic'] ?? false, // Parsing field isPublic
+      // Menangani fleksibilitas ID MongoDB (ObjectId atau String)
+      id: json['_id'] is String ? json['_id'] : (json['_id']?.toString() ?? ""),
+      title: json['title'] ?? "",
+      description: json['description'] ?? "",
+      category: json['category'] ?? "General",
+      username: json['username'] ?? "Unknown",
+      timestamp: json['timestamp'] ?? DateTime.now().toIso8601String(),
+      isSynced: true, // Data dari Cloud dianggap sudah tersinkron
+      isPublic: json['isPublic'] ?? false,
     );
   }
 
-  // Konversi ke JSON (MongoDB)
+  // Konversi ke JSON (Untuk dikirim ke MongoDB Cloud)
   Map<String, dynamic> toJson() {
     return {
-      '_id': id,
       'title': title,
       'description': description,
       'category': category,
       'username': username,
       'timestamp': timestamp,
-      'isPublic': isPublic, // Simpan status publikasi ke Cloud
+      'isPublic': isPublic,
+      // '_id' biasanya tidak dikirim saat POST baru, 
+      // tapi dikirim saat PUT/PATCH. Sesuaikan dengan backend Anda.
     };
   }
 }

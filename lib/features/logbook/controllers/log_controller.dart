@@ -1,159 +1,93 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/log_model.dart';
 
-class LogEditorPage extends StatefulWidget {
-  final LogModel? log;
+/// LOGIC CONTROLLER: Menangani semua manipulasi data Logbook.
+/// Dipisahkan dari UI untuk mematuhi prinsip Clean Architecture.
+class LogController {
+  final String username;
+  
+  // Notifier untuk update list secara real-time di UI (LogbookScreen)
+  final ValueNotifier<List<LogModel>> filteredLogs = ValueNotifier<List<LogModel>>([]);
+  
+  // Database lokal (dalam memori)
+  List<LogModel> _allLogs = [];
 
-  const LogEditorPage({super.key, this.log});
+  LogController({required this.username});
 
-  @override
-  State<LogEditorPage> createState() => _LogEditorPageState();
-}
-
-class _LogEditorPageState extends State<LogEditorPage> {
-  late TextEditingController _title;
-  late TextEditingController _desc;
-  late String _cat;
-  // TASK 5: State untuk status privasi
-  late bool _isPublic;
-
-  @override
-  void initState() {
-    super.initState();
-    _title = TextEditingController(text: widget.log?.title ?? "");
-    _desc = TextEditingController(text: widget.log?.description ?? "");
-    _cat = widget.log?.category ?? "Umum";
-    // Default false (Privat) sesuai skenario Task 5
-    _isPublic = widget.log?.isPublic ?? false;
+  /// [Method 1] Fetch Data awal
+  Future<void> fetchLogs() async {
+    // Di sini nantinya bisa ditambahkan pemanggilan ke Hive atau MongoDB API
+    // Untuk sekarang kita inisialisasi list kosong
+    _applyFilter("");
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.log == null ? "Tambah Catatan" : "Edit Catatan"),
-          backgroundColor: Colors.pink.shade100,
-          bottom: const TabBar(
-            indicatorColor: Colors.pink,
-            tabs: [
-              Tab(icon: Icon(Icons.edit), text: "Edit"),
-              Tab(icon: Icon(Icons.visibility), text: "Preview"),
-            ],
-          ),
-          actions: [
-            IconButton(
-              onPressed: _handleSave,
-              icon: const Icon(Icons.check),
-            )
-          ],
-        ),
-        body: TabBarView(
-          children: [
-            _buildEditorTab(),
-            _buildPreviewTab(),
-          ],
-        ),
-      ),
+  /// [Method 2] Sinkronisasi yang dipanggil oleh ConnectivityService di Screen
+  Future<void> syncPendingLogs() async {
+    debugPrint("🔄 Sinkronisasi data cloud untuk user: $username");
+    // Logika sinkronisasi data offline ke cloud
+  }
+
+  /// [Method 3] Tambah Log baru (Sinkron dengan LogEditorPage)
+  Future<void> addLog(String title, String desc, String category, bool isPublic) async {
+    final newLog = LogModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: title,
+      description: desc,
+      category: category,
+      username: username,
+      isPublic: isPublic,
+      timestamp: DateTime.now().toIso8601String(),
     );
+    
+    _allLogs.insert(0, newLog);
+    _applyFilter(""); 
   }
 
-  Widget _buildEditorTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        TextField(
-          controller: _title,
-          decoration: const InputDecoration(labelText: "Judul", border: OutlineInputBorder()),
-        ),
-        const SizedBox(height: 16),
-        // TASK 5: Widget Switch untuk Privasi
-        SwitchListTile(
-          title: const Text("Publikasikan Catatan"),
-          subtitle: Text(_isPublic 
-            ? "Anggota tim lain dapat melihat ini" 
-            : "Hanya Anda yang dapat melihat ini"),
-          value: _isPublic,
-          activeColor: Colors.pink,
-          onChanged: (bool value) {
-            setState(() {
-              _isPublic = value;
-            });
-          },
-          secondary: Icon(_isPublic ? Icons.public : Icons.lock, color: Colors.pink),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _desc,
-          maxLines: 10,
-          decoration: const InputDecoration(
-            labelText: "Deskripsi (Markdown)", 
-            border: OutlineInputBorder()
-          ),
-          onChanged: (v) => setState(() {}),
-        ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          value: _cat,
-          items: ["Umum", "Pekerjaan", "Pribadi", "Urgent"]
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: (v) => setState(() => _cat = v!),
-          decoration: const InputDecoration(labelText: "Kategori", border: OutlineInputBorder()),
-        ),
-        const SizedBox(height: 32),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.pink,
-            minimumSize: const Size(double.infinity, 50),
-          ),
-          onPressed: _handleSave,
-          child: const Text("SIMPAN PERUBAHAN", style: TextStyle(color: Colors.white)),
-        )
-      ],
-    );
+  /// [Method 4] Edit Log yang sudah ada
+  Future<void> editLog(String id, String title, String desc, String category, bool isPublic) async {
+    final index = _allLogs.indexWhere((log) => log.id == id);
+    if (index != -1) {
+      _allLogs[index] = _allLogs[index].copyWith(
+        title: title,
+        description: desc,
+        category: category,
+        isPublic: isPublic,
+      );
+      _applyFilter("");
+    }
   }
 
-  Widget _buildPreviewTab() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  _title.text.isEmpty ? "Tanpa Judul" : _title.text,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-              ),
-              // Indikator status di Preview
-              Icon(_isPublic ? Icons.public : Icons.lock, color: Colors.grey, size: 20),
-            ],
-          ),
-          const Divider(),
-          Expanded(
-            child: MarkdownBody(
-              data: _desc.text.isEmpty ? "_Belum ada deskripsi_" : _desc.text,
-              selectable: true,
-            ),
-          ),
-        ],
-      ),
-    );
+  /// [Method 5] Menghapus Log
+  Future<void> deleteLog(String id) async {
+    _allLogs.removeWhere((log) => log.id == id);
+    _applyFilter("");
   }
 
-  void _handleSave() {
-    // TASK 5: Sertakan nilai isPublic dalam data yang dikembalikan
-    Navigator.pop(context, {
-      'title': _title.text,
-      'desc': _desc.text,
-      'category': _cat,
-      'isPublic': _isPublic.toString(), // Konversi ke string agar seragam dengan data lain
-    });
+  /// [Method 6] Fitur Search Real-time (Homework 1)
+  void searchLog(String query) {
+    _applyFilter(query);
+  }
+
+  /// [Internal Logic] Gabungan filter Search + Hak Akses (Task 5)
+  void _applyFilter(String query) {
+    filteredLogs.value = _allLogs.where((log) {
+      // Sovereignity: User hanya bisa melihat miliknya sendiri ATAU yang diset Public
+      final bool canSee = log.username == username || log.isPublic;
+      
+      final bool matchesQuery = log.title.toLowerCase().contains(query.toLowerCase()) ||
+                                log.description.toLowerCase().contains(query.toLowerCase());
+                                
+      return canSee && matchesQuery;
+    }).toList();
+  }
+
+  /// [Method 7] Warna Kategori untuk LogCard & Chip UI
+  Color getCategoryColor(String category) {
+    switch (category) {
+      case 'Mechanical': return Colors.green;
+      case 'Electronic': return Colors.blue;
+      case 'Software': return Colors.purple;
+      default: return Colors.grey;
+    }
   }
 }
