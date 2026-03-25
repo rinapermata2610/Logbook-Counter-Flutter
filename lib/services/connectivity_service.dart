@@ -9,30 +9,25 @@ class ConnectivityService {
 
   final Connectivity _connectivity = Connectivity();
   
-  // Stream untuk mendengarkan perubahan koneksi secara real-time
+  // Stream untuk mendengarkan perubahan koneksi
   Stream<List<ConnectivityResult>> get connectionStream => _connectivity.onConnectivityChanged;
 
-  /// Fungsi untuk mengecek apakah saat ini ada akses internet
+  /// Fungsi untuk mengecek internet saat ini secara instan
   Future<bool> hasInternet() async {
     final List<ConnectivityResult> results = await _connectivity.checkConnectivity();
-    
-    // Jika tidak ada koneksi sama sekali (none)
-    if (results.contains(ConnectivityResult.none)) {
-      return false;
-    }
-    
-    // Bisa dikembangkan untuk mengecek akses internet asli (ping google/atlas)
-    return true;
+    // Cek jika list tidak mengandung 'none'
+    return !results.contains(ConnectivityResult.none);
   }
 
-  /// Listener otomatis untuk memicu sinkronisasi
+  /// Listener otomatis yang akan memicu callback saat koneksi KEMBALI tersedia
   void listenToConnection(VoidCallback onReconnected) {
     connectionStream.listen((List<ConnectivityResult> results) {
+      // Jika list tidak mengandung 'none', berarti ada koneksi (WiFi atau Mobile Data)
       if (!results.contains(ConnectivityResult.none)) {
-        debugPrint("Koneksi terdeteksi: Memicu sinkronisasi otomatis...");
+        debugPrint("🌐 ConnectivityService: Internet Terhubung!");
         onReconnected();
       } else {
-        debugPrint("Koneksi terputus: Berjalan dalam mode Offline (Hive).");
+        debugPrint("🔌 ConnectivityService: Mode Offline.");
       }
     });
   }

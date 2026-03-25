@@ -23,7 +23,6 @@ class LogbookScreen extends StatefulWidget {
 }
 
 class _LogbookScreenState extends State<LogbookScreen> {
-  // Pastikan class LogController sudah terdefinisi di log_controller.dart
   late LogController _controller;
 
   @override
@@ -167,7 +166,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
       itemBuilder: (context, index) {
         final item = logs[index];
 
-        // Validasi kedaulatan data (Sovereignty)
+        // Validasi (Sovereignty)
         final bool isOwner = AccessPolicy.canManageLog(
           userRole: widget.role,
           currentUsername: widget.username,
